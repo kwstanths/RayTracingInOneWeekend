@@ -2,6 +2,8 @@
 #include <fstream>
 #include <vector>
 #include <limits>
+#include <atomic>
+#include <omp.h>
 
 #include "Common.hpp"
 #include "Color.hpp"
@@ -30,7 +32,6 @@ void CreateImage(std::shared_ptr<Vector3> data, const std::string& file_name, in
 }
 
 Color ray_color(const Ray& r, const Hittable& world, int depth) {
-    // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0)
         return Color(0, 0, 0);
 
@@ -66,7 +67,9 @@ HittableList random_scene() {
                     // diffuse
                     auto albedo = Color::random() * Color::random();
                     sphere_material = make_shared<Lambertian>(albedo);
-                    world.add(make_shared<Sphere>(center, 0.2, sphere_material));
+                    auto center2 = center + Vector3(0, random_double(0, .5), 0);
+                    world.add(make_shared<MovingSphere>(
+                        center, center2, 0.0, 1.0, 0.2, sphere_material));
                 }
                 else if (choose_mat < 0.95) {
                     // metal
@@ -100,10 +103,13 @@ int main() {
 
     /* Image parameters */
     const Real aspect_ratio = 16.0 / 9.0;
-    const size_t image_width = 256;
+    const size_t image_width = 800;
     const size_t image_height = static_cast<size_t>(image_width / aspect_ratio);
-    const int samples_per_pixel = 500;
+    const int samples_per_pixel = 300;
+
+    /* Computation parameters */
     const int max_depth = 50;
+    const int threads = 4;
     
     /* Create the image data */
     std::shared_ptr<Vector3> image_data(new Vector3[image_width * image_height], std::default_delete<Vector3[]>());
@@ -116,10 +122,11 @@ int main() {
     auto dist_to_focus = 10.0;
     auto aperture = 0.1;
 
-    Camera camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+    Camera camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 0.0);
 
+    std::atomic<int> lines_remaining = { (int)image_height };
+#pragma omp parallel for num_threads(threads) shared(image_data) schedule(dynamic, 2)
     for (int j = image_height - 1; j >= 0; --j) {
-        std::cerr << "\rLines remaining: " << j << ' ' << std::flush;
         for (int i = 0; i < image_width; ++i) {
             Color pixel_color(0, 0, 0);
             for (int s = 0; s < samples_per_pixel; ++s) {
@@ -131,6 +138,9 @@ int main() {
             
             image_data.get()[j * image_width + i] = pixel_color;
         }
+        std::atomic_fetch_sub(&lines_remaining, 1);
+        /* First thread, report progress */
+        if (omp_get_thread_num() == 0) std::cerr << "\rImage lines remaining: " << lines_remaining.load() << ' ' << std::flush;
     }
     std::cerr << std::endl;
 

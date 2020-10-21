@@ -1,6 +1,6 @@
 #include "Camera.hpp"
 
-Camera::Camera(Point3 lookfrom, Point3 lookat, Vector3 vup, Real vfov, Real aspect_ratio, Real aperture, Real focus_dist)
+Camera::Camera(Point3 lookfrom, Point3 lookat, Vector3 vup, Real vfov, Real aspect_ratio, Real aperture, Real focus_dist, Real time_start, Real time_end)
 {
     auto theta = degrees_to_radians(vfov);
     auto h = tan(theta / 2);
@@ -18,6 +18,9 @@ Camera::Camera(Point3 lookfrom, Point3 lookat, Vector3 vup, Real vfov, Real aspe
     lower_left_corner_ = origin_ - horizontal_ / 2 - vertical_ / 2 - focus_dist * w_;
 
     lens_radius_ = aperture / 2;
+
+    time_start_ = time_start;
+    time_end_ = time_end;
 }
 
 Ray Camera::get_ray(Real s, Real t) const
@@ -26,7 +29,7 @@ Ray Camera::get_ray(Real s, Real t) const
     Vector3 offset = u_ * rd.x() + v_ * rd.y();
 
     return Ray(
-        origin_ + offset,
-        lower_left_corner_ + s * horizontal_ + t * vertical_ - origin_ - offset
+        origin_ + offset, lower_left_corner_ + s * horizontal_ + t * vertical_ - origin_ - offset,
+        random_double(time_start_, time_end_)
     );
 }

@@ -6,25 +6,29 @@
 class Ray {
 public:
     Ray() {}
-    Ray(const Point3& origin, const Vector3& direction)
-        : orig(origin), dir(direction)
+    Ray(const Point3& origin, const Vector3& direction, Real time = 0)
+        : origin_(origin), direction_(direction), time_(time)
     {
     }
 
     Point3 origin() const { 
-        return orig; 
+        return origin_;
     }
     Vector3 direction() const { 
-        return dir; 
+        return direction_;
+    }
+    Real Time() const {
+        return time_;
     }
 
-    Point3 at(double t) const {
-        return orig + t * dir;
+    Point3 at(Real t) const {
+        return origin_ + t * direction_;
     }
 
 public:
-    Point3 orig;
-    Vector3 dir;
+    Point3 origin_;
+    Vector3 direction_;
+    Real time_;
 };
 
 #endif
