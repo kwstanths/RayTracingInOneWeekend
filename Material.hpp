@@ -3,6 +3,7 @@
 
 #include "Ray.hpp"
 #include "Vector3.hpp"
+#include "Texture.hpp"
 
 struct HitRecord;
 
@@ -16,19 +17,20 @@ public:
 
 class Lambertian : public Material {
 public:
-    Lambertian(const Color& a) : albedo_(a) {}
+    Lambertian(const Color& a) : albedo_(make_shared<SolidColor>(a)) {};
+    Lambertian(shared_ptr<Texture> a) : albedo_(a) {};
 
     virtual bool scatter(
         const Ray& r_in, const HitRecord& rec, Color& attenuation, Ray& scattered
     ) const override {
         Vector3 scatter_direction = rec.normal_ + random_unit_vector();
         scattered = Ray(rec.p_, scatter_direction, r_in.time_);
-        attenuation = albedo_;
+        attenuation = albedo_->value(rec.u_, rec.v_, rec.p_);
         return true;
     }
 
 public:
-    Color albedo_;
+    shared_ptr<Texture> albedo_;
 };
 
 
@@ -49,6 +51,7 @@ public:
     Color albedo_;
     Real fuzziness_;
 };
+
 
 class Dielectric : public Material {
 public:

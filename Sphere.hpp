@@ -5,6 +5,11 @@
 #include "Vector3.hpp"
 #include "Material.hpp"
 
+/* 
+    Get the uv coordiantes for a point on the surface of a unit sphere
+*/
+void GetSphereUV(const Vector3& p, Real& u, Real& v);
+
 class Sphere : public Hittable {
 public:
     Sphere() {}
@@ -13,6 +18,8 @@ public:
 
     virtual bool hit(
         const Ray& r, Real t_min, Real t_max, HitRecord& rec) const override;
+
+    virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
 
 public:
     Point3 center_;
@@ -28,8 +35,9 @@ public:
         : center0_(cen0), center1_(cen1), time0_(t0), time1_(t1), radius_(r), mat_(m)
     {};
 
-    virtual bool hit(
-        const Ray& r, Real tmin, Real tmax, HitRecord& rec) const override;
+    virtual bool hit(const Ray& r, Real tmin, Real tmax, HitRecord& rec) const override;
+    
+    virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
 
     Point3 center(Real time) const;
 

@@ -11,6 +11,7 @@
 #include "Sphere.hpp"
 #include "Camera.hpp"
 #include "Material.hpp"
+#include "BVH.hpp"
 
 /* Write an image to the disk */
 void CreateImage(std::shared_ptr<Vector3> data, const std::string& file_name, int width, int height, int samples_per_pixel) {
@@ -49,11 +50,22 @@ Color ray_color(const Ray& r, const Hittable& world, int depth) {
     return (1.0 - t)*Color(1.0, 1.0, 1.0) + t * Color(0.5, 0.7, 1.0);
 }
 
+HittableList two_spheres() {
+    HittableList objects;
+
+    auto checker_texture = make_shared<CheckerTexture>(Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+
+    objects.add(make_shared<Sphere>(Point3(0, -10, 0), 10, make_shared<Lambertian>(checker_texture)));
+    objects.add(make_shared<Sphere>(Point3(0, 10, 0), 10, make_shared<Lambertian>(checker_texture)));
+
+    return objects;
+}
+
 HittableList random_scene() {
     HittableList world;
 
-    auto ground_material = make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
-    world.add(make_shared<Sphere>(Point3(0, -1000, 0), 1000, ground_material));
+    auto checker_texture = make_shared<CheckerTexture>(Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    world.add(make_shared<Sphere>(Point3(0, -1000, 0), 1000, make_shared<Lambertian>(checker_texture)));
 
     for (int a = -11; a < 11; a++) {
         for (int b = -11; b < 11; b++) {
@@ -99,30 +111,81 @@ HittableList random_scene() {
     return world;
 }
 
+HittableList two_perlin_spheres() {
+    HittableList objects;
+
+    auto pertext = make_shared<NoiseTexture>(16);
+    objects.add(make_shared<Sphere>(Point3(0, -1000, 0), 1000, make_shared<Lambertian>(pertext)));
+    objects.add(make_shared<Sphere>(Point3(0, 2, 0), 2, make_shared<Lambertian>(pertext)));
+
+    return objects;
+}
+
+HittableList earth() {
+    auto earth_texture = make_shared<ImageTexture>("earthmap.jpg");
+    auto earth_surface = make_shared<Lambertian>(earth_texture);
+    auto globe = make_shared<Sphere>(Point3(0, 0, 0), 2, earth_surface);
+
+    return HittableList(globe);
+}
+
 int main() {
 
     /* Image parameters */
     const Real aspect_ratio = 16.0 / 9.0;
-    const size_t image_width = 800;
+    const size_t image_width = 256;
     const size_t image_height = static_cast<size_t>(image_width / aspect_ratio);
-    const int samples_per_pixel = 300;
+    const int samples_per_pixel = 100;
+    /* Create the image data */
+    std::shared_ptr<Vector3> image_data(new Vector3[image_width * image_height], std::default_delete<Vector3[]>());
 
     /* Computation parameters */
     const int max_depth = 50;
     const int threads = 4;
-    
-    /* Create the image data */
-    std::shared_ptr<Vector3> image_data(new Vector3[image_width * image_height], std::default_delete<Vector3[]>());
 
-    HittableList world = random_scene();
-
-    Point3 lookfrom(13, 2, 13);
-    Point3 lookat(0, 0, 0);
+    /* Scene and camera parameters */
+    HittableList world;
+    Point3 lookfrom;
+    Point3 lookat;
+    auto aperture = 0.1;
+    auto vfov = 40.0;
+    size_t time_start = 0;
+    size_t time_end = 0;
     Vector3 vup(0, 1, 0);
     auto dist_to_focus = 10.0;
-    auto aperture = 0.1;
 
-    Camera camera(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 0.0);
+    switch (0) {
+    case 1:
+        world = random_scene();
+        lookfrom = Point3(13, 2, 3);
+        lookat = Point3(0, 0, 0);
+        vfov = 20.0;
+        aperture = 0.1;
+        break;
+    case 2:
+        world = two_spheres();
+        lookfrom = Point3(13, 2, 3);
+        lookat = Point3(0, 0, 0);
+        vfov = 20.0;
+        break;
+    case 3:
+        world = two_perlin_spheres();
+        lookfrom = Point3(13, 2, 3);
+        lookat = Point3(0, 0, 0);
+        vfov = 20.0;
+        break;
+    default:
+    case 4:
+        world = earth();
+        lookfrom = Point3(13, 2, 3);
+        lookat = Point3(0, 0, 0);
+        vfov = 20.0;
+        break;
+    }
+    /* Create a BVH out of the world crated */
+    BVHNode tree(world, time_start, time_end);
+
+    Camera camera(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, dist_to_focus, time_start, time_end);
 
     std::atomic<int> lines_remaining = { (int)image_height };
 #pragma omp parallel for num_threads(threads) shared(image_data) schedule(dynamic, 2)
@@ -133,7 +196,7 @@ int main() {
                 auto u = (i + random_double()) / (image_width - 1);
                 auto v = (j + random_double()) / (image_height - 1);
                 Ray r = camera.get_ray(u, v);
-                pixel_color += ray_color(r, world, max_depth);
+                pixel_color += ray_color(r, tree, max_depth);
             }
             
             image_data.get()[j * image_width + i] = pixel_color;

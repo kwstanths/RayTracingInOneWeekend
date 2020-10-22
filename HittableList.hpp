@@ -24,8 +24,9 @@ public:
         objects_.push_back(object); 
     }
 
-    virtual bool hit(
-        const Ray& r, Real tmin, Real tmax, HitRecord& rec) const override;
+    virtual bool hit(const Ray& r, Real tmin, Real tmax, HitRecord& rec) const override;
+
+    virtual bool bounding_box(double t0, double t1, AABB& output_box) const override;
 
 public:
     std::vector<shared_ptr<Hittable>> objects_;
