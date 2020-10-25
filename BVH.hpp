@@ -3,8 +3,8 @@
 
 #include "Common.hpp"
 
-#include "Hittable.hpp"
-#include "HittableList.hpp"
+#include "geometry/Hittable.hpp"
+#include "geometry/HittableList.hpp"
 
 
 class BVHNode : public Hittable {

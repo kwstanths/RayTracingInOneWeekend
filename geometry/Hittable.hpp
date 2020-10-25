@@ -30,11 +30,40 @@ struct HitRecord {
     }
 };
 
+
 class Hittable {
 public:
     virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const = 0;
     virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const = 0;
 };
 
+
+class Translate : public Hittable {
+public:
+    Translate(shared_ptr<Hittable> p, const Vector3& displacement): ptr_(p), offset_(displacement) {}
+
+    virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const override;
+    virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
+
+public:
+    shared_ptr<Hittable> ptr_;
+    Vector3 offset_;
+};
+
+
+class RotateY : public Hittable {
+public:
+    RotateY(shared_ptr<Hittable> p, const Real angle);
+
+    virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const override;
+    virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
+
+public:
+    shared_ptr<Hittable> ptr_;
+    double sin_theta_;
+    double cos_theta_;
+    bool hasbox_;
+    AABB bbox_;
+};
 
 #endif

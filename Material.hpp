@@ -9,6 +9,9 @@ struct HitRecord;
 
 class Material {
 public:
+    virtual Color emitted(Real u, Real v, const Point3& p) const {
+        return Color(0, 0, 0);
+    }
     virtual bool scatter(
         const Ray& r_in, const HitRecord& rec, Color& attenuation, Ray& scattered
     ) const = 0;
@@ -88,6 +91,40 @@ private:
         r0 = r0 * r0;
         return r0 + (1 - r0)*pow((1 - cosine), 5);
     }
+};
+
+
+class DiffuseLight : public Material {
+public:
+    DiffuseLight(shared_ptr<Texture> a) : emit_(a) {};
+    DiffuseLight(Color c) : emit_(make_shared<SolidColor>(c)) {};
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Color& attenuation, Ray& scattered) const override {
+        return false;
+    }
+
+    virtual Color emitted(Real u, Real v, const Point3& p) const {
+        return emit_->value(u, v, p);
+    }
+
+public:
+    shared_ptr<Texture> emit_;
+};
+
+class Isotropic : public Material {
+public:
+    Isotropic(Color c) : albedo_(make_shared<SolidColor>(c)) {}
+    Isotropic(shared_ptr<Texture> a) : albedo_(a) {}
+
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Color& attenuation, Ray& scattered) const override {
+        /* scatter in a random direction */
+        scattered = Ray(rec.p_, random_in_unit_sphere(), r_in.Time());
+        attenuation = albedo_->value(rec.u_, rec.v_, rec.p_);
+        return true;
+    }
+
+public:
+    shared_ptr<Texture> albedo_;
 };
 
 #endif
