@@ -1,7 +1,7 @@
 #ifndef __Color_hpp__
 #define __Color_hpp__
 
-#include "Vector3.hpp"
+#include "math/Vector3.hpp"
 #include "Common.hpp"
 
 #include <iostream>

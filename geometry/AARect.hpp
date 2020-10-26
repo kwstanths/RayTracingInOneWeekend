@@ -27,6 +27,9 @@ public:
     virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const override;
     virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
 
+    virtual Real pdf_value(const Point3& origin, const Vector3& v) const override;
+    virtual Vector3 random(const Point3& origin) const override;
+
 public:
     shared_ptr<Material> mat_;
     Real x0_, x1_, z0_, z1_, k_;

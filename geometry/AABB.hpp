@@ -2,8 +2,8 @@
 #define __AABB_hpp__
 
 #include "Common.hpp"
-#include "Vector3.hpp"
-#include "Ray.hpp"
+#include "math/Vector3.hpp"
+#include "math/Ray.hpp"
 
 class AABB {
 public:

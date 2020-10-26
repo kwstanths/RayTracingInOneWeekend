@@ -26,12 +26,17 @@ file(GLOB ${NAME}_H_HEADERS *.h)
 file(GLOB ${NAME}_C_SOURCES *.c)
 file(GLOB ${NAME}_GEOM_HEADERS geometry/*.hpp)
 file(GLOB ${NAME}_GEOM_SOURCES geometry/*.cpp)
+file(GLOB ${NAME}_MATH_HEADERS math/*.hpp)
+file(GLOB ${NAME}_MATH_SOURCES math/*.cpp)
 
 add_executable(${appName} 
     ${${NAME}_HPP_HEADERS}  ${${NAME}_CPP_SOURCES}
     ${${NAME}_H_HEADERS}  ${${NAME}_C_SOURCES}   
     ${${NAME}_GEOM_HEADERS}  ${${NAME}_GEOM_SOURCES} 
+    ${${NAME}_MATH_HEADERS}  ${${NAME}_MATH_SOURCES} 
 )
 
 source_group("geometry\\Headers"		FILES	${${NAME}_GEOM_HEADERS})
 source_group("geometry\\Sources"		FILES	${${NAME}_GEOM_SOURCES})
+source_group("math\\Headers"			FILES	${${NAME}_MATH_HEADERS})
+source_group("math\\Sources"			FILES	${${NAME}_MATH_SOURCES})

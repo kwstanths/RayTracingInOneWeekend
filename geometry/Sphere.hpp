@@ -1,8 +1,8 @@
 #ifndef __Sphere_hpp__
 #define __Sphere_hpp__
 
+#include "math/Vector3.hpp"
 #include "Hittable.hpp"
-#include "Vector3.hpp"
 #include "Material.hpp"
 
 /* 

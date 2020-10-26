@@ -1,8 +1,8 @@
 #ifndef __Camera_hpp__
 #define __Camera_hpp__
 
-#include "Vector3.hpp"
-#include "Ray.hpp"
+#include "math/Vector3.hpp"
+#include "math/Ray.hpp"
 
 class Camera {
 public:

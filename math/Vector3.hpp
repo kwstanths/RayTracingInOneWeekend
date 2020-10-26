@@ -128,4 +128,6 @@ Vector3 random_in_hemisphere(const Vector3& normal);
 
 Vector3 random_in_unit_disk();
 
+Vector3 random_cosine_direction();
+
 #endif

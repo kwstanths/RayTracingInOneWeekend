@@ -1,10 +1,10 @@
 #ifndef __Hittable_hpp__
 #define __Hittable_hpp__
 
-#include "Ray.hpp"
-#include "Real.hpp"
-#include "Vector3.hpp"
-#include "AABB.hpp"
+#include "math/Ray.hpp"
+#include "math/Real.hpp"
+#include "math/Vector3.hpp"
+#include "geometry/AABB.hpp"
 
 class Material;
 
@@ -35,6 +35,14 @@ class Hittable {
 public:
     virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const = 0;
     virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const = 0;
+    
+    virtual double pdf_value(const Point3& o, const Vector3& v) const {
+        return 0.0;
+    }
+
+    virtual Vector3 random(const Vector3& o) const {
+        return Vector3(1, 0, 0);
+    }
 };
 
 
@@ -64,6 +72,29 @@ public:
     double cos_theta_;
     bool hasbox_;
     AABB bbox_;
+};
+
+
+class FlipFace : public Hittable {
+public:
+    FlipFace(shared_ptr<Hittable> p) : ptr_(p) {}
+
+    virtual bool hit(
+        const Ray& r, Real t_min, Real t_max, HitRecord& rec) const override {
+
+        if (!ptr_->hit(r, t_min, t_max, rec))
+            return false;
+
+        rec.front_face_ = !rec.front_face_;
+        return true;
+    }
+
+    virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override {
+        return ptr_->bounding_box(t0, t1, output_box);
+    }
+
+public:
+    shared_ptr<Hittable> ptr_;
 };
 
 #endif

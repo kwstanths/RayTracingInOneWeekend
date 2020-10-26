@@ -7,6 +7,10 @@
 
 #include "Common.hpp"
 #include "Color.hpp"
+#include "math/Real.hpp"
+#include "math/Vector3.hpp"
+#include "math/Ray.hpp"
+#include "math/PDF.hpp"
 #include "geometry/HittableList.hpp"
 #include "geometry/Sphere.hpp"
 #include "geometry/AARect.hpp"
@@ -46,12 +50,23 @@ Color ray_color(const Ray& r, const Color& background, const Hittable& world, in
     
     Ray scattered;
     Color attenuation;
-    Color emitted = hit.mat_->emitted(hit.u_, hit.v_, hit.p_);
+    Color emitted = hit.mat_->emitted(r, hit, hit.u_, hit.v_, hit.p_);
+    Real pdf;
+    Color albedo;
 
-    if (!hit.mat_->scatter(r, hit, attenuation, scattered))
+    if (!hit.mat_->scatter(r, hit, albedo, scattered, pdf))
         return emitted;
-    
-    return emitted + attenuation * ray_color(scattered, background, world, depth - 1);
+
+    shared_ptr<Hittable> light_shape =
+        make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
+    auto p0 = make_shared<HittablePDF>(light_shape, hit.p_);
+    auto p1 = make_shared<CosinePDF>(hit.normal_);
+    MixturePDF p(p0, p1);
+
+    scattered = Ray(hit.p_, p.generate(), r.Time());
+    pdf = p.value(scattered.direction());
+
+    return emitted + albedo * hit.mat_->scattering_pdf(r, hit, scattered) * ray_color(scattered, background, world, depth - 1) / pdf;
 }
 
 HittableList two_spheres() {
@@ -159,7 +174,7 @@ HittableList cornell_box() {
 
     objects.add(make_shared<YZRect>(0, 555, 0, 555, 555, green));
     objects.add(make_shared<YZRect>(0, 555, 0, 555, 0, red));
-    objects.add(make_shared<XZRect>(213, 343, 227, 332, 554, light));
+    objects.add(make_shared<FlipFace>(make_shared<XZRect>(213, 343, 227, 332, 554, light)));
     objects.add(make_shared<XZRect>(0, 555, 0, 555, 0, white));
     objects.add(make_shared<XZRect>(0, 555, 0, 555, 555, white));
     objects.add(make_shared<XYRect>(0, 555, 0, 555, 555, white));
@@ -281,13 +296,13 @@ int main() {
     
     /* Computation parameters */
     const int max_depth = 50;
-    const int threads = 5;
+    const int threads = 4;
 
     /* Scene and camera parameters */
     HittableList world;
     Point3 lookfrom;
     Point3 lookat;
-    auto aperture = 0.1;
+    auto aperture = 0.01;
     auto vfov = 40.0;
     size_t time_start = 0;
     size_t time_end = 0;
@@ -295,7 +310,7 @@ int main() {
     auto dist_to_focus = 10.0;
     Color background(0, 0, 0);
 
-    switch (0) {
+    switch (6) {
     case 1:
         world = random_scene();
         lookfrom = Point3(13, 2, 3);
@@ -335,8 +350,8 @@ int main() {
     case 6:
         world = cornell_box();
         aspect_ratio = 1.0;
-        image_width = 256;
-        samples_per_pixel = 100;
+        image_width = 600;
+        samples_per_pixel = 2000;
         background = Color(0, 0, 0);
         lookfrom = Point3(278, 278, -800);
         lookat = Point3(278, 278, 0);

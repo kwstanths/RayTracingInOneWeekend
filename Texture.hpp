@@ -2,8 +2,8 @@
 #define __Texture_hpp__
 
 #include "Common.hpp"
-#include "Vector3.hpp"
-#include "Perlin.hpp"
+#include "math/Vector3.hpp"
+#include "math/Perlin.hpp"
 
 
 class Texture {

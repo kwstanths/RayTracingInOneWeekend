@@ -1,6 +1,6 @@
 #include "Vector3.hpp"
 
-Vector3 refract(const Vector3 & uv, const Vector3 & n, double etai_over_etat)
+Vector3 refract(const Vector3 & uv, const Vector3 & n, Real etai_over_etat)
 {
     auto cos_theta = dot(-uv, n);
     Vector3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
@@ -41,4 +41,17 @@ Vector3 random_in_unit_disk()
         if (p.length_squared() >= 1) continue;
         return p;
     }
+}
+
+Vector3 random_cosine_direction()
+{
+    auto r1 = random_double();
+    auto r2 = random_double();
+    auto z = sqrt(1 - r2);
+
+    auto phi = 2 * pi*r1;
+    auto x = cos(phi)*sqrt(r2);
+    auto y = sin(phi)*sqrt(r2);
+
+    return Vector3(x, y, z);
 }
