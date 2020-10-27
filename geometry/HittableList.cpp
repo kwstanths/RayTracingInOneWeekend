@@ -32,3 +32,22 @@ bool HittableList::bounding_box(double t0, double t1, AABB & output_box) const
 
     return true;
 }
+
+double HittableList::pdf_value(const Point3 & o, const Vector3 & v) const
+{
+    /* Calculate the probability of picking a random hittable from the list */
+    auto weight = 1.0 / objects_.size();
+    auto sum = 0.0;
+
+    for (const auto& object : objects_)
+        sum += weight * object->pdf_value(o, v);
+
+    return sum;
+}
+
+Vector3 HittableList::random(const Vector3 & o) const
+{
+    /* Get a random hittable from the list */
+    auto int_size = static_cast<int>(objects_.size());
+    return objects_[random_int(0, int_size - 1)]->random(o);
+}

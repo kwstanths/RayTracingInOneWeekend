@@ -39,36 +39,36 @@ void CreateImage(std::shared_ptr<Vector3> data, const std::string& file_name, in
     std::cout << "DONE" << std::endl;
 }
 
-Color ray_color(const Ray& r, const Color& background, const Hittable& world, int depth) {
+Color ray_color(const Ray& r, const Color& background, const Hittable& world, shared_ptr<Hittable> lights, int depth) {
     if (depth <= 0)
         return Color(0, 0, 0);
 
-    HitRecord hit;
-    if (!world.hit(r, 0.001, infinity, hit)) {
+    HitRecord rec;
+    if (!world.hit(r, 0.001, infinity, rec)) {
         return background;
     }
     
-    Ray scattered;
-    Color attenuation;
-    Color emitted = hit.mat_->emitted(r, hit, hit.u_, hit.v_, hit.p_);
-    Real pdf;
-    Color albedo;
-
-    if (!hit.mat_->scatter(r, hit, albedo, scattered, pdf))
+    ScatterRecord srec;
+    Color emitted = rec.mat_->emitted(r, rec, rec.u_, rec.v_, rec.p_);
+    if (!rec.mat_->scatter(r, rec, srec))
         return emitted;
 
-    shared_ptr<Hittable> light_shape =
-        make_shared<XZRect>(213, 343, 227, 332, 554, shared_ptr<Material>());
-    auto p0 = make_shared<HittablePDF>(light_shape, hit.p_);
-    auto p1 = make_shared<CosinePDF>(hit.normal_);
-    MixturePDF p(p0, p1);
+    if (srec.is_specular_) {
+        return srec.attenuation_
+            * ray_color(srec.specular_ray_, background, world, lights, depth - 1);
+    }
 
-    scattered = Ray(hit.p_, p.generate(), r.Time());
-    pdf = p.value(scattered.direction());
+    auto light_ptr = make_shared<HittablePDF>(lights, rec.p_);
+    MixturePDF p(light_ptr, srec.pdf_);
 
-    return emitted + albedo * hit.mat_->scattering_pdf(r, hit, scattered) * ray_color(scattered, background, world, depth - 1) / pdf;
+    Ray scattered = Ray(rec.p_, p.generate(), r.Time());
+    auto pdf_val = p.value(scattered.direction());
+
+    return emitted + srec.attenuation_ 
+            * rec.mat_->scattering_pdf(r, rec, scattered) * ray_color(scattered, background, world, lights, depth - 1) / pdf_val;
 }
 
+/* Create scenes */
 HittableList two_spheres() {
     HittableList objects;
 
@@ -164,7 +164,7 @@ HittableList simple_lights() {
     return objects;
 }
 
-HittableList cornell_box() {
+HittableList cornell_box(shared_ptr<Hittable>& lights) {
     HittableList objects;
 
     auto red = make_shared<Lambertian>(Color(.65, .05, .05));
@@ -174,7 +174,12 @@ HittableList cornell_box() {
 
     objects.add(make_shared<YZRect>(0, 555, 0, 555, 555, green));
     objects.add(make_shared<YZRect>(0, 555, 0, 555, 0, red));
-    objects.add(make_shared<FlipFace>(make_shared<XZRect>(213, 343, 227, 332, 554, light)));
+    
+    HittableList samplers;
+    
+    shared_ptr<Hittable> light_rec = make_shared<XZRect>(213, 343, 227, 332, 554, light);
+    samplers.add(light_rec);
+    objects.add(make_shared<FlipFace>(light_rec));
     objects.add(make_shared<XZRect>(0, 555, 0, 555, 0, white));
     objects.add(make_shared<XZRect>(0, 555, 0, 555, 555, white));
     objects.add(make_shared<XYRect>(0, 555, 0, 555, 555, white));
@@ -184,11 +189,12 @@ HittableList cornell_box() {
     box1 = make_shared<Translate>(box1, Vector3(265, 0, 295));
     objects.add(box1);
 
-    shared_ptr<Hittable> box2 = make_shared<Box>(Point3(0, 0, 0), Point3(165, 165, 165), white);
-    box2 = make_shared<RotateY>(box2, -18);
-    box2 = make_shared<Translate>(box2, Vector3(130, 0, 65));
-    objects.add(box2);
+    shared_ptr<Material> aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
+    shared_ptr<Hittable> sphere = make_shared<Sphere>(Point3(165, 82.5, 82.5), 82.5, make_shared<Dielectric>(1.5));
+    objects.add(sphere);
+    samplers.add(sphere);
 
+    lights = make_shared<HittableList>(samplers);
     return objects;
 }
 
@@ -296,13 +302,14 @@ int main() {
     
     /* Computation parameters */
     const int max_depth = 50;
-    const int threads = 4;
+    const int threads = 5;
 
     /* Scene and camera parameters */
     HittableList world;
+    shared_ptr<Hittable> lights;
     Point3 lookfrom;
     Point3 lookat;
-    auto aperture = 0.01;
+    auto aperture = 0.0;
     auto vfov = 40.0;
     size_t time_start = 0;
     size_t time_end = 0;
@@ -310,6 +317,7 @@ int main() {
     auto dist_to_focus = 10.0;
     Color background(0, 0, 0);
 
+    /* Create scenes, and set scene specific parameters */
     switch (6) {
     case 1:
         world = random_scene();
@@ -348,10 +356,10 @@ int main() {
         vfov = 20.0;
         break;
     case 6:
-        world = cornell_box();
+        world = cornell_box(lights);
         aspect_ratio = 1.0;
         image_width = 600;
-        samples_per_pixel = 2000;
+        samples_per_pixel = 10000;
         background = Color(0, 0, 0);
         lookfrom = Point3(278, 278, -800);
         lookat = Point3(278, 278, 0);
@@ -397,13 +405,13 @@ int main() {
                 auto u = (i + random_double()) / (image_width - 1);
                 auto v = (j + random_double()) / (image_height - 1);
                 Ray r = camera.get_ray(u, v);
-                pixel_color += ray_color(r, background, world, max_depth);
+                pixel_color += ray_color(r, background, world, lights, max_depth);
             }
             
             image_data.get()[j * image_width + i] = pixel_color;
         }
         std::atomic_fetch_sub(&lines_remaining, 1);
-        /* First thread, report progress */
+        /* First thread to report the progress */
         if (omp_get_thread_num() == 0) std::cerr << "\rImage lines remaining: " << lines_remaining.load() << ' ' << std::flush;
     }
     std::cerr << std::endl;

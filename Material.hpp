@@ -4,9 +4,17 @@
 #include "math/Ray.hpp"
 #include "math/Vector3.hpp"
 #include "math/ONB.hpp"
+#include "math/PDF.hpp"
 #include "Texture.hpp"
 
 struct HitRecord;
+
+struct ScatterRecord {
+    Ray specular_ray_;
+    bool is_specular_;
+    Color attenuation_;
+    shared_ptr<PDF> pdf_;
+};
 
 class Material {
 public:
@@ -14,7 +22,7 @@ public:
         return Color(0, 0, 0);
     }
     virtual bool scatter(
-        const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf
+        const Ray& r_in, const HitRecord& rec, ScatterRecord& srec
     ) const {
         return false;
     }
@@ -34,14 +42,11 @@ public:
     Lambertian(shared_ptr<Texture> a) : albedo_(a) {};
 
     virtual bool scatter(
-        const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf
+        const Ray& r_in, const HitRecord& rec, ScatterRecord& srec
     ) const override {
-        ONB uvw;
-        uvw.build_from_w(rec.normal_);
-        auto direction = uvw.local(random_cosine_direction());
-        scattered = Ray(rec.p_, unit_vector(direction), r_in.time_);
-        albedo = albedo_->value(rec.u_, rec.v_, rec.p_);
-        pdf = dot(uvw.w(), scattered.direction()) / pi;
+        srec.is_specular_ = false;
+        srec.attenuation_ = albedo_->value(rec.u_, rec.v_, rec.p_);
+        srec.pdf_ = make_shared<CosinePDF>(rec.normal_);
         return true;
     }
 
@@ -62,12 +67,14 @@ public:
     Metal(const Color& a, Real fuzziness) : albedo_(a), fuzziness_(fuzziness) {};
 
     virtual bool scatter(
-        const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf
+        const Ray& r_in, const HitRecord& rec, ScatterRecord& srec
     ) const override {
         Vector3 reflected = reflect(unit_vector(r_in.direction()), rec.normal_);
-        scattered = Ray(rec.p_, reflected + fuzziness_ * random_in_unit_sphere(), r_in.time_);
-        albedo = albedo_;
-        return (dot(scattered.direction(), rec.normal_) > 0);
+        srec.specular_ray_ = Ray(rec.p_, reflected + fuzziness_ * random_in_unit_sphere());
+        srec.attenuation_ = albedo_;
+        srec.is_specular_ = true;
+        srec.pdf_ = 0;
+        return true;
     }
 
 public:
@@ -81,9 +88,12 @@ public:
     Dielectric(Real index_of_refraction) : ir_(index_of_refraction) {};
 
     virtual bool scatter(
-        const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf
+        const Ray& r_in, const HitRecord& rec, ScatterRecord& srec
     ) const override {
-        albedo = Color(1.0, 1.0, 1.0);
+        srec.is_specular_ = true;
+        srec.pdf_ = nullptr;
+        srec.attenuation_ = Color(1.0, 1.0, 1.0);
+
         double refraction_ratio = rec.front_face_ ? (1.0 / ir_) : ir_;
 
         Vector3 unit_direction = unit_vector(r_in.direction());
@@ -97,7 +107,7 @@ public:
         else
             direction = refract(unit_direction, rec.normal_, refraction_ratio);
 
-        scattered = Ray(rec.p_, direction, r_in.time_);
+        srec.specular_ray_ = Ray(rec.p_, direction, r_in.Time());
         return true;
     }
 
@@ -119,7 +129,7 @@ public:
     DiffuseLight(shared_ptr<Texture> a) : emit_(a) {};
     DiffuseLight(Color c) : emit_(make_shared<SolidColor>(c)) {};
 
-    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, ScatterRecord& srec
         ) const override 
     {
         return false;
@@ -137,15 +147,17 @@ public:
     shared_ptr<Texture> emit_;
 };
 
+
 class Isotropic : public Material {
 public:
     Isotropic(Color c) : albedo_(make_shared<SolidColor>(c)) {}
     Isotropic(shared_ptr<Texture> a) : albedo_(a) {}
 
-    virtual bool scatter(const Ray& r_in, const HitRecord& rec, Color& albedo, Ray& scattered, Real& pdf) const override {
+    virtual bool scatter(const Ray& r_in, const HitRecord& rec, ScatterRecord& srec) const override {
         /* scatter in a random direction */
-        scattered = Ray(rec.p_, random_in_unit_sphere(), r_in.Time());
-        albedo = albedo_->value(rec.u_, rec.v_, rec.p_);
+        srec.is_specular_ = false;
+        srec.attenuation_ = albedo_->value(rec.u_, rec.v_, rec.p_);
+        srec.pdf_ = 0;
         return true;
     }
 

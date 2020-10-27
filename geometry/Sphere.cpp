@@ -45,6 +45,29 @@ bool Sphere::bounding_box(Real t0, Real t1, AABB & output_box) const
     return true;
 }
 
+double Sphere::pdf_value(const Point3 & o, const Vector3 & v) const
+{
+    /* Probability that the v direction from o hits this sphere */
+    HitRecord rec;
+    if (!this->hit(Ray(o, v), 0.001, infinity, rec))
+        return 0;
+
+    auto cos_theta_max = sqrt(1 - radius_ * radius_ / (center_ - o).length_squared());
+    auto solid_angle = 2 * pi*(1 - cos_theta_max);
+
+    return  1 / solid_angle;
+}
+
+Vector3 Sphere::random(const Vector3 & o) const
+{
+    /* Random point on the sphere */
+    Vector3 direction = center_ - o;
+    auto distance_squared = direction.length_squared();
+    ONB uvw;
+    uvw.build_from_w(direction);
+    return uvw.local(random_to_sphere(radius_, distance_squared));
+}
+
 bool MovingSphere::hit(const Ray & r, Real t_min, Real t_max, HitRecord & rec) const
 {
     /* Center of sphere at time t */

@@ -130,4 +130,6 @@ Vector3 random_in_unit_disk();
 
 Vector3 random_cosine_direction();
 
+Vector3 random_to_sphere(double radius, double distance_squared);
+
 #endif

@@ -33,13 +33,18 @@ struct HitRecord {
 
 class Hittable {
 public:
+    /* Caclulate the intersection with object, within the given time margin, store the result to rec */
     virtual bool hit(const Ray& r, Real t_min, Real t_max, HitRecord& rec) const = 0;
+
+    /* Return the bounding box of the object, within the given time margin */
     virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const = 0;
     
+    /* Caclulate the probability the a ray starting from o towards v, hits the object */
     virtual double pdf_value(const Point3& o, const Vector3& v) const {
         return 0.0;
     }
 
+    /* Calculate a random point on the Hittable object */
     virtual Vector3 random(const Vector3& o) const {
         return Vector3(1, 0, 0);
     }

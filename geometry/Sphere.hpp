@@ -21,6 +21,10 @@ public:
 
     virtual bool bounding_box(Real t0, Real t1, AABB& output_box) const override;
 
+    virtual double pdf_value(const Point3& o, const Vector3& v) const override;
+
+    virtual Vector3 random(const Vector3& o) const override;
+
 public:
     Point3 center_;
     Real radius_;

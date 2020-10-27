@@ -28,6 +28,10 @@ public:
 
     virtual bool bounding_box(double t0, double t1, AABB& output_box) const override;
 
+    virtual double pdf_value(const Point3& o, const Vector3& v) const override;
+
+    virtual Vector3 random(const Vector3& o) const override;
+
 public:
     std::vector<shared_ptr<Hittable>> objects_;
 };
