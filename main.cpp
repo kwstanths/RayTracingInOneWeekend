@@ -359,7 +359,7 @@ int main() {
         world = cornell_box(lights);
         aspect_ratio = 1.0;
         image_width = 600;
-        samples_per_pixel = 10000;
+        samples_per_pixel = 1000;
         background = Color(0, 0, 0);
         lookfrom = Point3(278, 278, -800);
         lookat = Point3(278, 278, 0);
